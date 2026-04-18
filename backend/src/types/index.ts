@@ -40,3 +40,9 @@ export interface LoginDto {
   email: string;
   password: string;
 }
+
+export interface TokenPayload {
+  userId: string;
+  email: string;
+  role: 'USER' | 'ADMIN';
+}

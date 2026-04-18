@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ZodSchema, ZodError } from 'zod';
+import { ZodSchema, ZodError, ZodIssue } from 'zod';
 import { ApiResponse } from '../types';
 
 export const validate = (schema: ZodSchema) => {
@@ -13,8 +13,8 @@ export const validate = (schema: ZodSchema) => {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const messages = error.errors.map((e) => ({
-          field: e.path.join('.'),
+        const messages = (error as ZodError).issues.map((e: ZodIssue) => ({
+          field: e.path.slice(1).join('.'), // strip 'body' prefix from path
           message: e.message,
         }));
 

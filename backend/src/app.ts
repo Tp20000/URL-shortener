@@ -10,6 +10,12 @@ import { errorHandler, notFoundHandler } from './middlewares/errorHandler.middle
 import { globalLimiter } from './middlewares/rateLimiter.middleware';
 
 import healthRoutes from './routes/health.routes';
+import authRoutes from './routes/auth.routes';
+import urlRoutes from './routes/url.routes';
+import analyticsRoutes from './routes/analytics.routes';
+import qrcodeRoutes from './routes/qrcode.routes';
+import adminRoutes from './routes/admin.routes';       // ← NEW
+import redirectRoutes from './routes/redirect.routes';
 
 const app = express();
 
@@ -48,13 +54,14 @@ app.get('/', (_req, res) => {
 });
 
 app.use('/api/health', healthRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/urls', urlRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/qr', qrcodeRoutes);
+app.use('/api/admin', adminRoutes);            // ← NEW
 
-// ─── Future routes will be added here ────────────────────
-// app.use('/api/auth', authRoutes);
-// app.use('/api/urls', urlRoutes);
-// app.use('/api/analytics', analyticsRoutes);
-// app.use('/api/admin', adminRoutes);
-// app.use('/', redirectRoutes);  // catch-all for short codes
+// Redirect handler — MUST be LAST before error handlers
+app.use('/', redirectRoutes);
 
 // ─── Error Handling ──────────────────────────────────────
 app.use(notFoundHandler);
