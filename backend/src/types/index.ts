@@ -6,6 +6,7 @@ export interface AuthUser {
   role: 'USER' | 'ADMIN';
 }
 
+// Properly extends Request so all Request properties are available
 export interface AuthRequest extends Request {
   user?: AuthUser;
 }

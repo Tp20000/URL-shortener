@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -21,47 +21,52 @@ import { startScheduler, stopScheduler } from './jobs/scheduler';
 
 const app = express();
 
-// ─── Security ────────────────────────────────────────────
+// ─── Security ─────────────────────────────────────────────
 app.use(helmet());
 
-// ─── CORS — allow frontend URL + localhost ────────────────
+// ─── CORS ─────────────────────────────────────────────────
 const allowedOrigins = [
   env.frontendUrl,
   'http://localhost:5173',
   'http://localhost:3000',
 ].filter(Boolean);
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (curl, mobile apps)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.some(o => origin.startsWith(o))) {
-      return callback(null, true);
-    }
-    // In production allow all (you can tighten this later)
-    if (env.isProd) return callback(null, true);
-    callback(new Error(`CORS blocked: ${origin}`));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+app.use(
+  cors({
+    origin: function (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void
+    ) {
+      if (!origin) return callback(null, true);
+      if (env.isProd) return callback(null, true);
+      if (allowedOrigins.some((o) => origin.startsWith(o as string))) {
+        return callback(null, true);
+      }
+      callback(null, true);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 
-// ─── Parsing ─────────────────────────────────────────────
+// ─── Parsing ──────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// ─── Logging ─────────────────────────────────────────────
-app.use(morgan('combined', {
-  stream: { write: (message: string) => logger.info(message.trim()) },
-}));
+// ─── Logging ──────────────────────────────────────────────
+app.use(
+  morgan('combined', {
+    stream: { write: (message: string) => logger.info(message.trim()) },
+  })
+);
 
-// ─── Rate Limiting ───────────────────────────────────────
+// ─── Rate Limiting ────────────────────────────────────────
 app.use(globalLimiter);
 
-// ─── Routes ──────────────────────────────────────────────
-app.get('/', (_req, res) => {
+// ─── Routes ───────────────────────────────────────────────
+app.get('/', (_req: Request, res: Response) => {
   res.json({
     success: true,
     message: '🔗 URL Shortener API is running',
@@ -78,11 +83,11 @@ app.use('/api/qr', qrcodeRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/', redirectRoutes);
 
-// ─── Error Handling ──────────────────────────────────────
+// ─── Error Handling ───────────────────────────────────────
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// ─── Start Server ────────────────────────────────────────
+// ─── Start Server ─────────────────────────────────────────
 const startServer = async () => {
   startScheduler();
 
