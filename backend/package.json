@@ -6,6 +6,7 @@
     "dev": "nodemon",
     "build": "tsc",
     "start": "node dist/app.js",
+    "worker": "ts-node src/workers/cleanup-worker.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
@@ -17,8 +18,8 @@
   "description": "",
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@types/ioredis": "^4.28.10",
     "bcryptjs": "^3.0.3",
-    "bullmq": "^5.74.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

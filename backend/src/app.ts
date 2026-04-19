@@ -14,8 +14,10 @@ import authRoutes from './routes/auth.routes';
 import urlRoutes from './routes/url.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import qrcodeRoutes from './routes/qrcode.routes';
-import adminRoutes from './routes/admin.routes';       // ← NEW
+import adminRoutes from './routes/admin.routes';
 import redirectRoutes from './routes/redirect.routes';
+
+import { startScheduler, stopScheduler } from './jobs/scheduler';
 
 const app = express();
 
@@ -35,9 +37,7 @@ app.use(cookieParser());
 
 // ─── Logging ─────────────────────────────────────────────
 app.use(morgan('combined', {
-  stream: {
-    write: (message: string) => logger.info(message.trim()),
-  },
+  stream: { write: (message: string) => logger.info(message.trim()) },
 }));
 
 // ─── Rate Limiting ───────────────────────────────────────
@@ -58,9 +58,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/urls', urlRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/qr', qrcodeRoutes);
-app.use('/api/admin', adminRoutes);            // ← NEW
-
-// Redirect handler — MUST be LAST before error handlers
+app.use('/api/admin', adminRoutes);
 app.use('/', redirectRoutes);
 
 // ─── Error Handling ──────────────────────────────────────
@@ -69,16 +67,25 @@ app.use(errorHandler);
 
 // ─── Start Server ────────────────────────────────────────
 const startServer = async () => {
-  try {
-    app.listen(env.port, () => {
-      logger.info(`🚀 Server running on port ${env.port}`);
-      logger.info(`📊 Health check: ${env.baseUrl}/api/health`);
-      logger.info(`🌍 Environment: ${env.nodeEnv}`);
-    });
-  } catch (error) {
-    logger.error('Failed to start server:', error);
-    process.exit(1);
-  }
+  // Start native scheduler (no external dependency)
+  startScheduler();
+
+  app.listen(env.port, () => {
+    logger.info(`🚀 Server running on port ${env.port}`);
+    logger.info(`📊 Health: ${env.baseUrl}/api/health`);
+    logger.info(`🌍 Environment: ${env.nodeEnv}`);
+    logger.info('⏰ Native job scheduler: ✅ Active');
+  });
+
+  // Graceful shutdown
+  const shutdown = async (signal: string) => {
+    logger.info(`⚠️ ${signal} — shutting down...`);
+    stopScheduler();
+    process.exit(0);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 };
 
 startServer();
