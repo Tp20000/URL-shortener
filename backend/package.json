@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "nodemon",
     "build": "tsc",
-    "start": "node dist/app.js",
-    "worker": "ts-node src/workers/cleanup-worker.ts",
+    "start": "node dist/src/app.js",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",

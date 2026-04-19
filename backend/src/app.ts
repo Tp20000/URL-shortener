@@ -23,8 +23,25 @@ const app = express();
 
 // ─── Security ────────────────────────────────────────────
 app.use(helmet());
+
+// ─── CORS — allow frontend URL + localhost ────────────────
+const allowedOrigins = [
+  env.frontendUrl,
+  'http://localhost:5173',
+  'http://localhost:3000',
+].filter(Boolean);
+
 app.use(cors({
-  origin: env.frontendUrl,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, mobile apps)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.some(o => origin.startsWith(o))) {
+      return callback(null, true);
+    }
+    // In production allow all (you can tighten this later)
+    if (env.isProd) return callback(null, true);
+    callback(new Error(`CORS blocked: ${origin}`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -67,17 +84,15 @@ app.use(errorHandler);
 
 // ─── Start Server ────────────────────────────────────────
 const startServer = async () => {
-  // Start native scheduler (no external dependency)
   startScheduler();
 
   app.listen(env.port, () => {
     logger.info(`🚀 Server running on port ${env.port}`);
     logger.info(`📊 Health: ${env.baseUrl}/api/health`);
     logger.info(`🌍 Environment: ${env.nodeEnv}`);
-    logger.info('⏰ Native job scheduler: ✅ Active');
+    logger.info('⏰ Scheduler: ✅ Active');
   });
 
-  // Graceful shutdown
   const shutdown = async (signal: string) => {
     logger.info(`⚠️ ${signal} — shutting down...`);
     stopScheduler();
