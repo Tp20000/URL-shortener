@@ -69,53 +69,7 @@ app.use('/api/qr', qrcodeRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/', redirectRoutes);
 
-// ─── TEMP SEED ROUTE (remove after use) ──────────────────
-app.get('/api/temp-seed-admin-xyz123', async (_req: Request, res: Response) => {
-  try {
-    const bcrypt = require('bcryptjs');
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
 
-    const hash = await bcrypt.hash('Admin@12345', 12);
-
-    const admin = await prisma.user.upsert({
-      where: { email: 'admin@urlshort.com' },
-      update: { password: hash, role: 'ADMIN', isActive: true },
-      create: {
-        email: 'admin@urlshort.com',
-        password: hash,
-        name: 'System Admin',
-        role: 'ADMIN',
-        isActive: true,
-      },
-    });
-
-    const userHash = await bcrypt.hash('User@12345', 12);
-    const user = await prisma.user.upsert({
-      where: { email: 'user@urlshort.com' },
-      update: {},
-      create: {
-        email: 'user@urlshort.com',
-        password: userHash,
-        name: 'Test User',
-        role: 'USER',
-        isActive: true,
-      },
-    });
-
-    await prisma.$disconnect();
-
-    res.json({
-      success: true,
-      message: 'Seeded successfully',
-      admin: admin.email,
-      user: user.email,
-    });
-  } catch (e: any) {
-    res.status(500).json({ error: e.message });
-  }
-});
-// ─── END TEMP SEED ROUTE ──────────────────────────────────
 
 // ─── Error Handling ───────────────────────────────────────
 app.use(notFoundHandler);
