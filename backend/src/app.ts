@@ -24,31 +24,18 @@ const app = express();
 // ─── Security ─────────────────────────────────────────────
 app.use(helmet());
 
-// ─── CORS ─────────────────────────────────────────────────
-const allowedOrigins = [
-  env.frontendUrl,
-  'http://localhost:5173',
-  'http://localhost:3000',
-].filter(Boolean);
-
+// ─── CORS — explicitly allow all origins in production ────
 app.use(
   cors({
-    origin: function (
-      origin: string | undefined,
-      callback: (err: Error | null, allow?: boolean) => void
-    ) {
-      if (!origin) return callback(null, true);
-      if (env.isProd) return callback(null, true);
-      if (allowedOrigins.some((o) => origin.startsWith(o as string))) {
-        return callback(null, true);
-      }
-      callback(null, true);
-    },
+    origin: true,           // ← allow ALL origins (simplest fix for demo)
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
+
+// Handle preflight requests
+app.options('*', cors());
 
 // ─── Parsing ──────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
@@ -71,7 +58,6 @@ app.get('/', (_req: Request, res: Response) => {
     success: true,
     message: '🔗 URL Shortener API is running',
     version: '1.0.0',
-    docs: '/api/health',
   });
 });
 
@@ -82,6 +68,54 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/qr', qrcodeRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/', redirectRoutes);
+
+// ─── TEMP SEED ROUTE (remove after use) ──────────────────
+app.get('/api/temp-seed-admin-xyz123', async (_req: Request, res: Response) => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+
+    const hash = await bcrypt.hash('Admin@12345', 12);
+
+    const admin = await prisma.user.upsert({
+      where: { email: 'admin@urlshort.com' },
+      update: { password: hash, role: 'ADMIN', isActive: true },
+      create: {
+        email: 'admin@urlshort.com',
+        password: hash,
+        name: 'System Admin',
+        role: 'ADMIN',
+        isActive: true,
+      },
+    });
+
+    const userHash = await bcrypt.hash('User@12345', 12);
+    const user = await prisma.user.upsert({
+      where: { email: 'user@urlshort.com' },
+      update: {},
+      create: {
+        email: 'user@urlshort.com',
+        password: userHash,
+        name: 'Test User',
+        role: 'USER',
+        isActive: true,
+      },
+    });
+
+    await prisma.$disconnect();
+
+    res.json({
+      success: true,
+      message: 'Seeded successfully',
+      admin: admin.email,
+      user: user.email,
+    });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+// ─── END TEMP SEED ROUTE ──────────────────────────────────
 
 // ─── Error Handling ───────────────────────────────────────
 app.use(notFoundHandler);
